@@ -1,27 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import time
 import rclpy
 import serial
 from rclpy.node import Node
-from parafoil_msgs.msg import UWB
+from parafoil_msgs.msg import Pose
 from parafoil.tool import unpack_uint8, unpack_int16, unpack_int24, unpack_float
-
-UWB_START_BYTE = b'\x55'
-UWB_DATA_LENGTH = 128
 
 
 class UWBPublisher(Node):
     def __init__(self):
         super().__init__('uwb_publisher')
-
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baud_rate', 921600)
-
         port = self.get_parameter('port').get_parameter_value().string_value
         baud_rate = self.get_parameter('baud_rate').get_parameter_value().integer_value
         self.serial = serial.Serial(port, baud_rate, timeout=1)
 
-        self.publisher = self.create_publisher(UWB, 'uwb', 10)
+        self.publisher = self.create_publisher(Pose, 'parafoil/pose/raw', 10)
 
         self.run()
 
@@ -30,9 +26,9 @@ class UWBPublisher(Node):
         while rclpy.ok():
             buffer.append(self.serial.read())
             try:
-                start_index = buffer.index(UWB_START_BYTE)
-                if start_index + UWB_DATA_LENGTH <= len(buffer):
-                    data = buffer[start_index:start_index + UWB_DATA_LENGTH]
+                start_index = buffer.index(b'\x55')
+                if start_index + 128 <= len(buffer):
+                    data = buffer[start_index:start_index + 128]
 
                     check_value = 0
                     for num in data[:-1]:
@@ -63,26 +59,23 @@ class UWBPublisher(Node):
                         q3 = unpack_float(data[96:100])
                         q4 = unpack_float(data[100:104])
 
-                        uwb = UWB()
-                        uwb.id = unpack_uint8(data[2])
-                        uwb.position = [position_x, position_y, position_z]
-                        uwb.velocity = [velocity_x, velocity_y, velocity_z]
-                        uwb.angle = [angle_x, angle_y, angle_z]
-                        uwb.quaternion = [q1, q2, q3, q4]
-                        uwb.acceleration = [acceleration_x, acceleration_y, acceleration_z]
-                        uwb.angular_velocity = [angular_velocity_x, angular_velocity_y, angular_velocity_z]
-                        self.publisher.publish(uwb)
-                    buffer = buffer[start_index + UWB_DATA_LENGTH + 1:]
+                        pose = Pose()
+                        pose.timestamp = time.time()
+                        pose.id = unpack_uint8(data[2])
+                        pose.position = [position_x, position_y, position_z]
+                        pose.velocity = [velocity_x, velocity_y, velocity_z]
+                        pose.angle = [angle_x, angle_y, angle_z]
+                        pose.quaternion = [q1, q2, q3, q4]
+                        pose.acceleration = [acceleration_x, acceleration_y, acceleration_z]
+                        pose.angular_velocity = [angular_velocity_x, angular_velocity_y, angular_velocity_z]
+                        self.publisher.publish(pose)
+                    buffer = buffer[start_index + 128 + 1:]
             except ValueError:
                 pass
-
-    def stop(self):
-        self.serial.close()
 
 
 def main(args=None):
     rclpy.init(args=args)
     uwb_publisher = UWBPublisher()
-    uwb_publisher.stop()
     uwb_publisher.destroy_node()
     rclpy.shutdown()

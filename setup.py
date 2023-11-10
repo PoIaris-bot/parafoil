@@ -6,7 +6,7 @@ package_name = 'parafoil'
 
 setup(
     name=package_name,
-    version='0.1.0',
+    version='0.1.1',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -26,7 +26,9 @@ setup(
             'uwb_publisher = parafoil.uwb_publisher:main',
             'rc_receiver = parafoil.rc_receiver:main',
             'motor_driver = parafoil.motor_driver:main',
-            'autopilot = parafoil.autopilot:main'
+            'autopilot = parafoil.autopilot:main',
+            'logger = parafoil.logger:main',
+            'pose_estimator = parafoil.pose_estimator:main'
         ],
     },
 )

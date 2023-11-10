@@ -35,10 +35,22 @@ def generate_launch_description():
             package='parafoil',
             executable='autopilot',
             name='autopilot',
+            parameters=[{
+                'control_rate': 20,
+            }]
         ),
-        # Node(
-        #     package='parafoil',
-        #     executable='pose_estimator',
-        #     name='pose_estimator',
-        # )
+        Node(
+            package='parafoil',
+            executable='logger',
+            name='logger',
+            parameters=[{
+                'filepath': '/home/pi/ros2_ws/src/parafoil/log',
+            }],
+            output='screen'
+        ),
+        Node(
+            package='parafoil',
+            executable='pose_estimator',
+            name='pose_estimator'
+        )
     ])
