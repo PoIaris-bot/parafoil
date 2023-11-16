@@ -19,12 +19,12 @@ class Logger(Node):
         self.logging = False
 
         self.pose_raw = []
-        self.pose = []
+        self.pose_ekf = []
         self.control = []
         self.rc_in = []
 
         self.pose_raw_subscription = self.create_subscription(Pose, 'parafoil/pose/raw', self.pose_raw_callback, 10)
-        self.pose_subscription = self.create_subscription(Pose, 'parafoil/pose', self.pose_callback, 10)
+        self.pose_subscription = self.create_subscription(Pose, 'parafoil/pose/ekf', self.pose_ekf_callback, 10)
         self.control_subscription = self.create_subscription(Control, 'parafoil/control', self.control_callback, 10)
         self.rc_in_subscription = self.create_subscription(RCIn, 'parafoil/rc/in', self.rc_in_callback, 10)
 
@@ -41,9 +41,9 @@ class Logger(Node):
                 *message.acceleration
             ])
 
-    def pose_callback(self, message):
+    def pose_ekf_callback(self, message):
         if self.logging:
-            self.pose.append([
+            self.pose_ekf.append([
                 message.timestamp,
                 message.id,
                 *message.position,
@@ -82,11 +82,13 @@ class Logger(Node):
                 np.savetxt(filename, np.array(self.pose_raw), delimiter=',')
                 saved = True
                 self.pose_raw = []
-            if self.pose:
-                filename = os.path.join(self.filepath, f'{time.strftime("pose_%Y%m%d%H%M%S", time.localtime())}.txt')
-                np.savetxt(filename, np.array(self.pose), delimiter=',')
+            if self.pose_ekf:
+                filename = os.path.join(
+                    self.filepath, f'{time.strftime("pose_ekf_%Y%m%d%H%M%S", time.localtime())}.txt'
+                )
+                np.savetxt(filename, np.array(self.pose_ekf), delimiter=',')
                 saved = True
-                self.pose = []
+                self.pose_ekf = []
             if self.control:
                 filename = os.path.join(self.filepath, f'{time.strftime("control_%Y%m%d%H%M%S", time.localtime())}.txt')
                 np.savetxt(filename, np.array(self.control), delimiter=',')

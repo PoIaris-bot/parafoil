@@ -3,8 +3,10 @@
 import time
 import rclpy
 import serial
+from numpy import pi
 from rclpy.node import Node
 from parafoil_msgs.msg import Pose
+from serial.serialutil import SerialException
 from parafoil.tool import unpack_uint8, unpack_int16, unpack_int24, unpack_float
 
 
@@ -13,9 +15,12 @@ class UWBPublisher(Node):
         super().__init__('uwb_publisher')
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baud_rate', 921600)
-        port = self.get_parameter('port').get_parameter_value().string_value
-        baud_rate = self.get_parameter('baud_rate').get_parameter_value().integer_value
-        self.serial = serial.Serial(port, baud_rate, timeout=1)
+        self.port = self.get_parameter('port').get_parameter_value().string_value
+        self.baud_rate = self.get_parameter('baud_rate').get_parameter_value().integer_value
+        try:
+            self.serial = serial.Serial(self.port, self.baud_rate)
+        except SerialException:
+            self.serial = None
 
         self.publisher = self.create_publisher(Pose, 'parafoil/pose/raw', 10)
 
@@ -24,7 +29,19 @@ class UWBPublisher(Node):
     def run(self):
         buffer = []
         while rclpy.ok():
-            buffer.append(self.serial.read())
+            if self.serial is not None:
+                try:
+                    byte = self.serial.read()
+                    buffer.append(byte)
+                except SerialException:
+                    self.serial.close()
+                    self.serial = None
+            else:
+                try:
+                    self.serial = serial.Serial(self.port, self.baud_rate)
+                except SerialException:
+                    self.serial = None
+
             try:
                 start_index = buffer.index(b'\x55')
                 if start_index + 128 <= len(buffer):
@@ -50,9 +67,9 @@ class UWBPublisher(Node):
                         acceleration_y = unpack_float(data[62:66])
                         acceleration_z = unpack_float(data[66:70])
 
-                        angle_x = unpack_int16(data[82:84]) / 100
-                        angle_y = unpack_int16(data[84:86]) / 100
-                        angle_z = unpack_int16(data[86:88]) / 100
+                        angle_x = unpack_int16(data[82:84]) / 100 / 180 * pi
+                        angle_y = unpack_int16(data[84:86]) / 100 / 180 * pi
+                        angle_z = unpack_int16(data[86:88]) / 100 / 180 * pi
 
                         q1 = unpack_float(data[88:92])
                         q2 = unpack_float(data[92:96])

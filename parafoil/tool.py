@@ -1,4 +1,5 @@
 import struct
+import numpy as np
 
 
 def constraint(value, lower, upper):
@@ -28,3 +29,7 @@ def unpack_int24(byte):
 def unpack_float(byte):
     value = byte[0] + byte[1] + byte[2] + byte[3]
     return struct.unpack('<f', value)[0]
+
+
+def remap_angle(angle):
+    return np.arctan2(np.sin(angle), np.cos(angle))

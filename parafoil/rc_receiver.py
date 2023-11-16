@@ -5,6 +5,7 @@ import rclpy
 import serial
 from rclpy.node import Node
 from parafoil_msgs.msg import RCIn
+from serial.serialutil import SerialException
 
 
 class RCReceiver(Node):
@@ -12,11 +13,14 @@ class RCReceiver(Node):
         super().__init__('rc_receiver')
 
         self.declare_parameter('port', '/dev/ttyAMA0')
-        port = self.get_parameter('port').get_parameter_value().string_value
-        self.serial = serial.Serial(
-            port=port, baudrate=100000, bytesize=serial.EIGHTBITS,
-            parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_TWO
-        )
+        self.port = self.get_parameter('port').get_parameter_value().string_value
+        try:
+            self.serial = serial.Serial(
+                port=self.port, baudrate=100000, bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_TWO
+            )
+        except SerialException:
+            self.serial = None
 
         self.publisher = self.create_publisher(RCIn, 'parafoil/rc/in', 10)
 
@@ -25,7 +29,22 @@ class RCReceiver(Node):
     def run(self):
         buffer = []
         while rclpy.ok():
-            buffer.append(self.serial.read())
+            if self.serial is not None:
+                try:
+                    byte = self.serial.read()
+                    buffer.append(byte)
+                except SerialException:
+                    self.serial.close()
+                    self.serial = None
+            else:
+                try:
+                    self.serial = serial.Serial(
+                        port=self.port, baudrate=100000, bytesize=serial.EIGHTBITS,
+                        parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_TWO
+                    )
+                except SerialException:
+                    self.serial = None
+
             try:
                 start_index = buffer.index(b'\x0f')
                 if start_index + 25 <= len(buffer):

@@ -33,6 +33,22 @@ def generate_launch_description():
         ),
         Node(
             package='parafoil',
+            executable='radio_telemetry',
+            name='radio_telemetry',
+            parameters=[{
+                'topic': 'parafoil/pose/ekf',
+                'rate': 15,
+                'port': '/dev/ttyUSB1',
+                'baud_rate': 57600
+            }]
+        ),
+        Node(
+            package='parafoil',
+            executable='pose_estimator',
+            name='pose_estimator'
+        ),
+        Node(
+            package='parafoil',
             executable='autopilot',
             name='autopilot',
             parameters=[{
@@ -47,10 +63,5 @@ def generate_launch_description():
                 'filepath': '/home/pi/ros2_ws/src/parafoil/log',
             }],
             output='screen'
-        ),
-        Node(
-            package='parafoil',
-            executable='pose_estimator',
-            name='pose_estimator'
         )
     ])
